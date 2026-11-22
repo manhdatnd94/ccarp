@@ -47,6 +47,14 @@ aside summary{font-weight:600;cursor:pointer;padding:2px 0}
 .cell.rev{background:var(--sel);border-color:var(--accent);color:var(--accent)}
 .cell.cur{outline:2px solid var(--fg);outline-offset:1px}
 .cell.warn::after{content:"";position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.cell.bm::before{content:"★";position:absolute;left:3px;top:1px;font-size:10px;line-height:1;color:var(--star)}
+button.bmk{display:inline-flex;align-items:center;gap:4px}
+button.bmk.on{background:var(--starbg);border-color:var(--star);color:var(--starfg);font-weight:600}
+#bmopen.on{background:var(--starbg);border-color:var(--star);color:var(--starfg)}
+#toast{color:var(--starfg)}
+.mapf button[data-mf="bm"].on{background:var(--starbg);border-color:var(--star);color:var(--starfg)}
+.bmbar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--starbg);border:1px solid var(--star);border-radius:10px;padding:6px 12px;margin-bottom:12px;font-size:14px;color:var(--starfg)}
+.bmbar button{font-size:13px;padding:3px 8px}
 .legend{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;border:1px solid;margin:0 4px 0 8px;vertical-align:-1px}
 .meta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;margin-bottom:12px}
@@ -81,9 +89,9 @@ label.toggle{display:flex;gap:6px;align-items:center;font-size:14px}
 .timer select,.timer button{padding:3px 6px}
 #clock{font:600 16px ui-monospace,SFMono-Regular,Menlo,monospace;min-width:64px;text-align:center}
 #clock.over{color:var(--bad)}
-:root{--warn:#9a6700;--warnbg:#fff8c5}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--warn:#d29922;--warnbg:#2e2510}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#16181c;--card:#1f2228;--fg:#e6e8eb;--muted:#9aa3ad;--line:#353a42;--accent:#7aa2ff;--sel:#243453;--ok:#4ac26b;--okbg:#17321f;--bad:#ff7b72;--badbg:#3b1d1d;--code:#2a2e35;--warn:#d29922;--warnbg:#2e2510}
+:root{--warn:#9a6700;--warnbg:#fff8c5;--star:#d4a017;--starbg:#fff4cc;--starfg:#7a5600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--warn:#d29922;--warnbg:#2e2510;--star:#e3b341;--starbg:#3a2f10;--starfg:#f2cc60}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#16181c;--card:#1f2228;--fg:#e6e8eb;--muted:#9aa3ad;--line:#353a42;--accent:#7aa2ff;--sel:#243453;--ok:#4ac26b;--okbg:#17321f;--bad:#ff7b72;--badbg:#3b1d1d;--code:#2a2e35;--warn:#d29922;--warnbg:#2e2510;--star:#e3b341;--starbg:#3a2f10;--starfg:#f2cc60}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
 header{top:env(safe-area-inset-top,0px)}
@@ -116,8 +124,9 @@ summary.sm{font-size:14px;color:var(--accent);cursor:pointer}
 <header>
   <h1>CCAR-P — Ôn tập song ngữ</h1>
   <select id="filter" aria-label="Bộ câu hỏi">
-    <option value="0">Tất cả</option><option value="1">Bộ 1</option><option value="2">Bộ 2</option><option value="3">Bộ 3</option><option value="4">Bộ 4 (câu mới)</option>
+    <option value="0">Tất cả</option><option value="1">Bộ 1</option><option value="2">Bộ 2</option><option value="3">Bộ 3</option><option value="4">Bộ 4 (câu mới)</option><option value="-1">★ Câu đã bookmark</option>
   </select>
+  <button id="bmopen" title="Mở danh sách câu đã bookmark">★ Bookmark (<span id="bmcount">0</span>)</button>
   <span>Câu <input id="jump" type="number" min="1" aria-label="Đi tới câu"> / <span id="total"></span></span>
   <button id="prev" title="Câu trước (←)">← Trước</button>
   <button id="next" title="Câu sau (→)">Sau →</button>
@@ -127,6 +136,7 @@ summary.sm{font-size:14px;color:var(--accent);cursor:pointer}
     <button id="tstart" title="Bắt đầu / tạm dừng">▶</button><button id="treset" title="Đặt lại đồng hồ">↺</button>
     <span class="small" id="pace"></span>
   </span>
+  <span id="toast" class="small" aria-live="polite"></span>
   <span class="grow"></span>
   <label class="toggle" title="Hiện/ẩn cột tiếng Việt"><input type="checkbox" id="showVi"> Tiếng Việt</label>
   <label class="toggle" title="Với câu có ghi chú review ⚠️: chấm theo đáp án đề xuất thay vì đáp án gốc của trang">
@@ -141,11 +151,12 @@ summary.sm{font-size:14px;color:var(--accent);cursor:pointer}
     <div class="stats" id="stats"></div>
     <div class="mapf" id="mapf"></div>
     <div class="grid" id="grid"></div>
-    <div class="legend"><i style="background:var(--okbg);border-color:var(--ok)"></i>Đúng<i style="background:var(--badbg);border-color:var(--bad)"></i>Sai<i style="background:var(--sel);border-color:var(--accent)"></i>Đã xem đáp án<i style="background:var(--warn);border-color:var(--warn);border-radius:50%"></i>Có ghi chú review</div>
+    <div class="legend"><i style="background:var(--okbg);border-color:var(--ok)"></i>Đúng<i style="background:var(--badbg);border-color:var(--bad)"></i>Sai<i style="background:var(--sel);border-color:var(--accent)"></i>Đã xem đáp án<i style="background:var(--warn);border-color:var(--warn);border-radius:50%"></i>Có ghi chú review<span style="color:var(--star);margin:0 4px 0 8px">★</span>Đã bookmark</div>
   </details>
 </aside>
 <main>
-  <div class="meta"><b id="qtitle"></b><span class="tag" id="qtype"></span>
+  <div class="bmbar" id="bmbar" hidden></div>
+  <div class="meta"><b id="qtitle"></b><button id="bmk" class="bmk" title="Bookmark câu này (phím B)">☆ Bookmark</button><span class="tag" id="qtype"></span>
     <span class="tag warn" id="qwarn" hidden>⚠️ Đáp án gốc của trang có thể chưa chính xác</span></div>
   <div class="cols" id="cols">
     <section class="col"><div class="lang">English</div><div id="en"></div></section>
@@ -209,7 +220,7 @@ function md(src) {
 }
 
 // ---------- state ----------
-const fresh = () => ({ pos: 0, filter: 0, q: {}, useReview: true, mapFilter: "all", showVi: true,
+const fresh = () => ({ pos: 0, filter: 0, q: {}, bm: [], useReview: true, mapFilter: "all", showVi: true,
   timer: { mode: "up", acc: 0, start: null, alerted: false } });
 let S = fresh();
 try { Object.assign(S, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
@@ -218,7 +229,39 @@ const ans = q => S.useReview && q.review && q.review.key.length ? q.review.key :
 const VERDICT = { missing: "Đáp án trang có thể thiếu", wrong: "Đáp án trang có thể sai",
   unanswerable: "Câu hỏi thiếu dữ liệu, không trả lời chắc chắn được" };
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
-const list = () => Q.map((q, i) => i).filter(i => !S.filter || Q[i].set === S.filter);
+// ---------- bookmarks ----------
+if (!Array.isArray(S.bm)) S.bm = [];
+const BM_MODE = -1;
+let bmSticky = null;   // question just un-bookmarked while reviewing bookmarks: keep it on screen until the user moves on
+const isBm = n => S.bm.indexOf(n) >= 0;
+const list = () => Q.map((q, i) => i).filter(i => S.filter === BM_MODE ? (isBm(Q[i].n) || i === bmSticky)
+  : (!S.filter || Q[i].set === S.filter));
+let toastT = null;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg;
+  clearTimeout(toastT); toastT = setTimeout(() => { t.textContent = ""; }, 2500);
+}
+function toggleBm() {
+  const n = Q[S.pos].n;
+  if (isBm(n)) {
+    S.bm = S.bm.filter(x => x !== n);
+    if (S.filter === BM_MODE) bmSticky = S.pos;
+    toast("Đã bỏ bookmark câu " + n);
+  } else {
+    S.bm = S.bm.concat([n]).sort((a, b) => a - b);
+    toast("Đã bookmark câu " + n);
+  }
+  render();
+}
+function openBm(on) {
+  bmSticky = null;
+  if (on) {
+    if (!S.bm.length) { toast("Chưa có câu nào được bookmark. Bấm ☆ Bookmark ở mỗi câu để thêm."); render(); return; }
+    S.filter = BM_MODE; S.mapFilter = "all";
+    S.pos = list()[0];
+  } else { S.filter = 0; }
+  render(); scrollTo(0, 0);
+}
 const st = q => S.q[q.n] || (S.q[q.n] = { sel: [], checked: false, correct: false, revealed: false });
 const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 
@@ -455,7 +498,8 @@ function analysisHTML(q, A, per) {
 }
 
 function render() {
-  const L = list();
+  let L = list();
+  if (!L.length && S.filter === BM_MODE) { S.filter = 0; bmSticky = null; L = list(); toast("Danh sách bookmark đã trống, quay về tất cả câu hỏi."); }
   if (!L.includes(S.pos)) S.pos = L[0];
   const q = Q[S.pos], s = st(q), k = L.indexOf(S.pos) + 1, A = ans(q);
   const done = s.checked || s.revealed;
@@ -466,6 +510,18 @@ function render() {
   $("jump").value = k; $("jump").max = L.length; $("total").textContent = L.length;
   $("prev").disabled = k === 1; $("next").disabled = $("next2").disabled = k === L.length;
   $("qtitle").textContent = "Câu " + q.n + " (Bộ " + q.set + " · câu " + q.i + ")";
+  const bmOn = isBm(q.n);
+  $("bmk").className = "bmk" + (bmOn ? " on" : "");
+  $("bmk").textContent = bmOn ? "★ Đã bookmark" : "☆ Bookmark";
+  $("bmk").setAttribute("aria-pressed", bmOn ? "true" : "false");
+  $("bmcount").textContent = S.bm.length;
+  $("bmopen").className = S.filter === BM_MODE ? "on" : "";
+  $("bmopen").title = S.filter === BM_MODE ? "Đang xem câu đã bookmark. Bấm để quay về tất cả câu hỏi" : "Mở danh sách câu đã bookmark";
+  $("bmbar").hidden = S.filter !== BM_MODE;
+  if (S.filter === BM_MODE) $("bmbar").innerHTML = "<b>★ Đang xem lại câu đã bookmark</b><span>" + S.bm.length + " câu</span>" +
+    (bmSticky === S.pos ? "<span>· câu này vừa bỏ bookmark, sẽ ẩn khi chuyển câu</span>" : "") +
+    '<span class="grow" style="flex:1"></span><button data-bm="exit">Thoát, xem tất cả</button>' +
+    (S.bm.length ? '<button data-bm="clear">Xóa hết bookmark</button>' : "");
   $("qtype").textContent = A.length > 1 ? "Chọn nhiều đáp án (chọn " + A.length + ")" : "Chọn một đáp án";
   $("qwarn").hidden = !q.review;
   for (const lang of ["en", "vi"]) {
@@ -508,16 +564,17 @@ function render() {
 const cellState = q => { const s = S.q[q.n]; return !s ? "" : s.checked ? (s.correct ? "ok" : "bad") : s.revealed ? "rev" : ""; };
 function renderMap(L) {
   const states = L.map(i => cellState(Q[i])), c = k => states.filter(x => x === k).length;
+  const nbm = L.filter(i => isBm(Q[i].n)).length;
   $("stats").innerHTML = '<div class="ok">Đúng<b>' + c("ok") + '</b></div><div class="bad">Sai<b>' + c("bad") +
     "</b></div><div>Đã xem đáp án<b>" + c("rev") + "</b></div><div>Chưa làm<b>" + c("") + "</b></div>";
   const mf = S.mapFilter || "all";
-  $("mapf").innerHTML = [["all", "Tất cả", L.length], ["bad", "Sai", c("bad")], ["ok", "Đúng", c("ok")], ["todo", "Chưa làm", c("")]]
+  $("mapf").innerHTML = [["all", "Tất cả", L.length], ["bad", "Sai", c("bad")], ["ok", "Đúng", c("ok")], ["todo", "Chưa làm", c("")], ["bm", "★", nbm]]
     .map(([k, t, n]) => '<button data-mf="' + k + '" class="' + (k === mf ? "on" : "") + '">' + t + " (" + n + ")</button>").join("");
   $("grid").innerHTML = L.map((i, j) => {
     const s = states[j];
-    if (mf !== "all" && s !== (mf === "todo" ? "" : mf)) return "";
-    return '<button class="cell ' + s + (i === S.pos ? " cur" : "") + (Q[i].review ? " warn" : "") +
-      '" data-i="' + i + '" title="Câu ' + Q[i].n + '">' + Q[i].n + "</button>";
+    if (mf === "bm" ? !isBm(Q[i].n) : (mf !== "all" && s !== (mf === "todo" ? "" : mf))) return "";
+    return '<button class="cell ' + s + (i === S.pos ? " cur" : "") + (Q[i].review ? " warn" : "") + (isBm(Q[i].n) ? " bm" : "") +
+      '" data-i="' + i + '" title="Câu ' + Q[i].n + (isBm(Q[i].n) ? " (đã bookmark)" : "") + '">' + Q[i].n + "</button>";
   }).join("") || '<span class="small">Không có câu nào.</span>';
   if (mq("(min-width:1001px)")) { const cur = document.querySelector(".cell.cur"); if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" }); }
 }
@@ -531,14 +588,23 @@ function pick(l) {
 }
 function go(d) {
   const L = list(), k = L.indexOf(S.pos) + d;
-  if (k >= 0 && k < L.length) { S.pos = L[k]; render(); scrollTo(0, 0); }
+  if (k >= 0 && k < L.length) { S.pos = L[k]; bmSticky = null; render(); scrollTo(0, 0); }
 }
 
 document.addEventListener("click", e => {
   const o = e.target.closest(".opt");
   if (o) return pick(o.dataset.l);
   const cell = e.target.closest(".cell");
-  if (cell) { S.pos = +cell.dataset.i; render(); scrollTo(0, 0); return; }
+  if (cell) { S.pos = +cell.dataset.i; bmSticky = null; render(); scrollTo(0, 0); return; }
+  const bb = e.target.closest("[data-bm]");
+  if (bb) {
+    if (bb.dataset.bm === "exit") openBm(false);
+    else if (bb.dataset.bm === "clear") {
+      if (bb.dataset.armed) { S.bm = []; bmSticky = null; toast("Đã xóa hết bookmark"); openBm(false); }
+      else { bb.dataset.armed = "1"; bb.textContent = "Bấm lần nữa để xóa hết"; bb.style.borderColor = "var(--bad)"; }
+    }
+    return;
+  }
   const f = e.target.closest("[data-mf]");
   if (f) { S.mapFilter = f.dataset.mf; render(); }
 });
@@ -548,6 +614,7 @@ document.addEventListener("keydown", e => {
   if (is("input,select")) return;
   if (e.key === "ArrowLeft") go(-1);
   else if (e.key === "ArrowRight") go(1);
+  else if ((e.key === "b" || e.key === "B") && !e.metaKey && !e.ctrlKey && !e.altKey) toggleBm();
   else if ((e.key === "Enter" || e.key === " ") && is(".opt")) { e.preventDefault(); pick(t.dataset.l); }
   else if ((e.key === "Enter" || e.key === " ") && !is("a, header button, aside button, summary")) {
     // Enter / Space: grade the current answer, or move on once it has been graded/revealed
@@ -559,10 +626,16 @@ document.addEventListener("keydown", e => {
 });
 $("prev").onclick = () => go(-1);
 $("next").onclick = $("next2").onclick = () => go(1);
-$("filter").onchange = e => { S.filter = +e.target.value; S.pos = list()[0]; render(); };
+$("filter").onchange = e => {
+  const v = +e.target.value;
+  if (v === BM_MODE) return openBm(true);
+  bmSticky = null; S.filter = v; S.pos = list()[0]; render();
+};
+$("bmk").onclick = toggleBm;
+$("bmopen").onclick = () => openBm(S.filter !== BM_MODE);
 $("jump").onchange = e => {
   const L = list(), k = Math.min(Math.max(1, parseInt(e.target.value) || 1), L.length);
-  S.pos = L[k - 1]; render();
+  S.pos = L[k - 1]; bmSticky = null; render();
 };
 $("check").onclick = () => {
   const q = Q[S.pos], s = st(q);
@@ -581,7 +654,7 @@ $("reset").onclick = () => {
     return;
   }
   clearTimeout(resetArm); resetArm = null; b.textContent = "Xóa tiến độ"; b.style.borderColor = "";
-  S = Object.assign(fresh(), { useReview: S.useReview, showVi: S.showVi, timer: S.timer }); render(); scrollTo(0, 0);
+  S = Object.assign(fresh(), { useReview: S.useReview, showVi: S.showVi, timer: S.timer, bm: S.bm }); bmSticky = null; render(); scrollTo(0, 0);
 };
 $("showVi").onchange = e => { S.showVi = e.target.checked; render(); };
 

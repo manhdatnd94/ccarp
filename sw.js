@@ -1,5 +1,5 @@
 // Đổi số phiên bản mỗi khi cập nhật index.html để máy tải bản mới
-const CACHE = "ccarp-v2";
+const CACHE = "ccarp-v3";
 const FILES = ["./", "./index.html", "./manifest.json",
   "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 self.addEventListener("install", e => {
